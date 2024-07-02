@@ -1,0 +1,145 @@
+The primary factor that can make the `colcon build` process take a long time and require building many packages is the fact that you are building ROS 2 from source. This process involves several steps, including fetching the source code, resolving dependencies, and compiling a large number of packages. Let's break down the potential time-consuming parts:
+
+### Key Steps That Contribute to Build Time
+
+1. **Fetching the ROS 2 Source Code**:
+   - The `vcs import` command pulls the source code for all ROS 2 packages specified in the `ros2.repos` file. This can take a while, depending on the number of packages and the speed of your internet connection.
+   ```bash
+   vcs import --input https://raw.githubusercontent.com/ros2/ros2/humble/ros2.repos src
+   ```
+
+2. **Resolving Dependencies**:
+   - The `rosdep install` command installs all the necessary dependencies for the ROS 2 packages. This can also be time-consuming, especially if there are many dependencies to install.
+   ```bash
+   sudo rosdep init
+   rosdep update
+   rosdep install --from-paths src --ignore-src -y --skip-keys "fastcdr rti-connext-dds-6.0.1 urdfdom_headers"
+   ```
+
+3. **Building the Packages**:
+   - The `colcon build` command compiles all the ROS 2 packages. Since ROS 2 consists of hundreds of packages, compiling all of them from source can take a significant amount of time.
+   ```bash
+   colcon build --symlink-install
+   ```
+
+### Steps That Might Be Skipped or Verified
+
+To check if you have already installed necessary tools and dependencies, you can verify the presence of certain packages and configurations:
+
+1. **Check Installed Packages**:
+   - Use `dpkg` to verify if essential packages are installed:
+   ```bash
+   dpkg -l | grep 'python3-flake8\|python3-pip\|python3-pytest\|ros-dev-tools'
+   ```
+
+2. **Verify ROS 2 Setup**:
+   - Ensure ROS 2 setup scripts are sourced correctly:
+   ```bash
+   source /opt/ros/humble/setup.bash
+   ```
+
+### Potential Optimization Steps
+
+1. **Use Pre-built Binaries**:
+   - Instead of building ROS 2 from source, you can install pre-built binaries to save time:
+   ```bash
+   sudo apt update
+   sudo apt install ros-humble-desktop
+   ```
+
+2. **Parallel Build**:
+   - If you have multiple CPU cores, you can speed up the build process by using parallel builds. `colcon` supports this via the `--parallel-workers` option:
+   ```bash
+   colcon build --symlink-install --parallel-workers $(nproc)
+   ```
+
+### Complete Optimized Process
+
+If you still want to build from source but optimize the process, follow these steps:
+
+1. **Update and Install Dependencies**:
+   ```bash
+   sudo apt update
+   sudo apt install -y build-essential libseccomp-dev pkg-config squashfs-tools cryptsetup
+   sudo apt install -y software-properties-common curl gnupg lsb-release
+   ```
+
+2. **Install Go (for Singularity)**:
+   ```bash
+   wget https://golang.org/dl/go1.21.10.linux-arm64.tar.gz
+   sudo tar -C /usr/local -xzf go1.21.10.linux-arm64.tar.gz
+   echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+   source ~/.bashrc
+   ```
+
+3. **Install Singularity**:
+   ```bash
+   wget https://github.com/sylabs/singularity/releases/download/v4.1.3/singularity-ce-4.1.3.tar.gz
+   tar -xzf singularity-ce-4.1.3.tar.gz
+   cd singularity-ce-4.1.3
+   ./mconfig
+   make -C builddir
+   sudo make -C builddir install
+   ```
+
+4. **Set Locale**:
+   ```bash
+   sudo apt install locales
+   sudo locale-gen en_US en_US.UTF-8
+   sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+   export LANG=en_US.UTF-8
+   ```
+
+5. **Add ROS 2 APT Repository**:
+   ```bash
+   sudo apt install software-properties-common
+   sudo add-apt-repository universe
+   sudo apt install curl -y
+   sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+   echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+   ```
+
+6. **Install Development Tools**:
+   ```bash
+   sudo apt update && sudo apt install -y \
+   python3-flake8-docstrings \
+   python3-pip \
+   python3-pytest-cov \
+   ros-dev-tools \
+   python3-flake8-blind-except \
+   python3-flake8-builtins \
+   python3-flake8-class-newline \
+   python3-flake8-comprehensions \
+   python3-flake8-deprecated \
+   python3-flake8-import-order \
+   python3-flake8-quotes \
+   python3-pytest-repeat \
+   python3-pytest-rerunfailures
+   ```
+
+7. **Get ROS 2 Code**:
+   ```bash
+   mkdir -p ~/ros2_humble/src
+   cd ~/ros2_humble
+   vcs import --input https://raw.githubusercontent.com/ros2/ros2/humble/ros2.repos src
+   ```
+
+8. **Install Dependencies Using rosdep**:
+   ```bash
+   sudo rosdep init
+   rosdep update
+   rosdep install --from-paths src --ignore-src -y --skip-keys "fastcdr rti-connext-dds-6.0.1 urdfdom_headers"
+   ```
+
+9. **Build the Code in the Workspace**:
+   ```bash
+   cd ~/ros2_humble/
+   colcon build --symlink-install --parallel-workers $(nproc)
+   ```
+
+10. **Source the Workspace**:
+    ```bash
+    source ~/ros2_humble/install/local_setup.bash
+    ```
+
+By following these steps and optimizations, you should be able to reduce the build time and efficiently manage the ROS 2 installation and setup.
